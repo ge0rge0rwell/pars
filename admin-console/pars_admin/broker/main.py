@@ -6,9 +6,18 @@ from twisted.internet.protocol import ClientFactory, Factory
 from twisted.protocols import basic
 
 from pars_admin.broker.authz import BrokerAuthzError, GrantGatedBroker
-from pars_admin.broker.broker_server import process_broker_session_request
+from pars_admin.broker.broker_server import (
+    process_broker_grant_delivery,
+    process_broker_session_request,
+)
 from pars_admin.broker.epoptes_link import EpoptesLink
-from pars_shared.protocol import BrokerSessionResultMessage, from_json, to_json
+from pars_shared.protocol import (
+    BrokerGrantDeliveryMessage,
+    BrokerSessionRequestMessage,
+    BrokerSessionResultMessage,
+    from_json,
+    to_json,
+)
 
 _DEFAULT_BROKER_LISTEN_HOST = "127.0.0.1"
 _DEFAULT_BROKER_LISTEN_PORT = 8744
@@ -28,8 +37,21 @@ class BrokerSessionProtocol(basic.LineReceiver):
             self._reply(BrokerSessionResultMessage(success=False, error=str(exc)))
             return
 
+        if isinstance(message, BrokerSessionRequestMessage):
+            processor = process_broker_session_request
+        elif isinstance(message, BrokerGrantDeliveryMessage):
+            processor = process_broker_grant_delivery
+        else:
+            self._reply(
+                BrokerSessionResultMessage(
+                    success=False,
+                    error=f"unsupported message type: {message.msg_type!r}",
+                )
+            )
+            return
+
         try:
-            outcome = process_broker_session_request(self._gated_broker, message)
+            outcome = processor(self._gated_broker, message)
         except (BrokerAuthzError, ValueError) as exc:
             self._reply(BrokerSessionResultMessage(success=False, error=str(exc)))
             return

@@ -1,5 +1,6 @@
 import socket
 
+from pars_admin.broker.broker_client import send_grant_delivery
 from pars_admin.grant_issue import GrantIssueError
 from pars_admin.registry import Registry
 from pars_admin.session_tracker import SessionConflictError
@@ -59,6 +60,8 @@ def handle_connection(
     health_store=None,
     accounts=None,
     app=None,
+    broker_host=None,
+    broker_port=None,
 ) -> None:
     data = b""
     while True:
@@ -99,6 +102,16 @@ def handle_connection(
                     message.username, "teacher", message.hostname, message.session_mode
                 )
                 open_grant = next(g for g in grants if g.grant_kind == GRANT_KIND_OPEN)
+                if broker_host is not None and broker_port is not None:
+                    for other_grant in grants:
+                        if other_grant.grant_kind == GRANT_KIND_OPEN:
+                            continue
+                        try:
+                            send_grant_delivery(
+                                broker_host, broker_port, to_wire_dict(other_grant)
+                            )
+                        except OSError:
+                            pass
                 response = protocol.SessionRequestResultMessage(
                     grant=to_wire_dict(open_grant), error=""
                 )

@@ -1,5 +1,6 @@
 import socket
 import threading
+import time
 
 from pars_admin.bulk_import import BulkImportStaging
 from pars_admin.enrollment_server import (
@@ -405,3 +406,88 @@ def test_handle_connection_dispatches_session_request_conflict(tmp_path):
     assert isinstance(parsed, protocol.SessionRequestResultMessage)
     assert parsed.error != ""
     assert parsed.grant == {}
+
+
+def test_teacher_moving_machines_session_request_delivers_revoke_to_broker(tmp_path):
+    from pars_admin.app import AdminApp
+
+    app = AdminApp(
+        data_dir=str(tmp_path / "trust"),
+        registry_db_path=str(tmp_path / "registry.sqlite3"),
+        audit_db_path=str(tmp_path / "audit.sqlite3"),
+        staging_db_path=str(tmp_path / "staging.sqlite3"),
+    )
+    app.registry.upsert("itlab-03", "it_lab", "ab:cd", "approved")
+    app.registry.upsert("itlab-04", "it_lab", "11:22", "approved")
+    app.open_session("teacher.ayse", "teacher", "itlab-03", "control")
+
+    broker_received = []
+
+    def broker_accept():
+        broker_server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        broker_server_sock.bind(("127.0.0.1", 0))
+        broker_server_sock.listen(1)
+        broker_port_local[0] = broker_server_sock.getsockname()[1]
+        conn, _addr = broker_server_sock.accept()
+        data = b""
+        while not data.endswith(b"\r\n"):
+            chunk = conn.recv(4096)
+            if not chunk:
+                break
+            data += chunk
+        broker_received.append(data)
+        conn.sendall(
+            protocol.to_json(protocol.BrokerSessionResultMessage(success=True)).encode(
+                "utf-8"
+            )
+            + b"\r\n"
+        )
+        conn.close()
+        broker_server_sock.close()
+
+    broker_port_local = [None]
+    broker_thread = threading.Thread(target=broker_accept, daemon=True)
+    broker_thread.start()
+
+    while broker_port_local[0] is None:
+        time.sleep(0.01)
+
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("127.0.0.1", 0))
+    server.listen(1)
+    port = server.getsockname()[1]
+
+    def accept_one():
+        conn, _addr = server.accept()
+        handle_connection(
+            conn,
+            app.registry,
+            app.trust_root,
+            app=app,
+            broker_host="127.0.0.1",
+            broker_port=broker_port_local[0],
+        )
+        conn.close()
+        server.close()
+
+    thread = threading.Thread(target=accept_one, daemon=True)
+    thread.start()
+
+    request = protocol.SessionRequestMessage(
+        username="teacher.ayse",
+        hostname="itlab-04",
+        action="control",
+        session_mode="control",
+    )
+    with socket.create_connection(("127.0.0.1", port), timeout=2) as client:
+        client.sendall(protocol.to_json(request).encode("utf-8"))
+        client.shutdown(socket.SHUT_WR)
+        client.recv(4096)
+    thread.join(timeout=2)
+    broker_thread.join(timeout=2)
+
+    assert len(broker_received) == 1
+    delivered = protocol.from_json(broker_received[0].rstrip(b"\r\n").decode("utf-8"))
+    assert isinstance(delivered, protocol.BrokerGrantDeliveryMessage)
+    assert delivered.grant["grant_kind"] == "revoke"
+    assert delivered.grant["target_hostname"] == "itlab-03"

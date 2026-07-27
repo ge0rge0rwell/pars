@@ -1,10 +1,16 @@
 from twisted.test import proto_helpers
 
 from pars_admin.broker.authz import GrantGatedBroker
+from pars_admin.broker.grant_delivery import build_delivery_command
 from pars_admin.broker.main import BrokerSessionFactory
 from pars_shared import crypto, grant
 from pars_shared.grant import to_wire_dict
-from pars_shared.protocol import BrokerSessionRequestMessage, from_json, to_json
+from pars_shared.protocol import (
+    BrokerGrantDeliveryMessage,
+    BrokerSessionRequestMessage,
+    from_json,
+    to_json,
+)
 
 
 class _FakeEpoptesLink:
@@ -86,3 +92,32 @@ def test_malformed_input_replies_failure_not_raise():
     sent = transport.value()
     response = from_json(sent.split(b"\r\n")[0].decode("utf-8"))
     assert response.success is False
+
+
+def test_grant_delivery_message_pushes_grant_and_replies_success():
+    priv, pub = crypto.generate_keypair()
+    link = _FakeEpoptesLink()
+    gated = GrantGatedBroker(epoptes_link=link, admin_pubkey=pub)
+    proto, transport = _make_protocol(gated)
+
+    revoke = grant.build_and_sign(
+        grant_id="g-2",
+        issued_at="2026-07-23T00:00:00Z",
+        admin_instance_id="school-42",
+        admin_private_key=priv,
+        admin_public_key=pub,
+        subject="teacher.ayse",
+        subject_kind="teacher",
+        target_hostname="itlab-05",
+        target_cert_fingerprint="ab:cd",
+        session_mode="control",
+        grant_kind="revoke",
+    )
+    message = BrokerGrantDeliveryMessage(grant=to_wire_dict(revoke))
+    proto.lineReceived(to_json(message).encode("utf-8"))
+
+    sent = transport.value()
+    response = from_json(sent.split(b"\r\n")[0].decode("utf-8"))
+    assert response.success is True
+    expected_command = build_delivery_command(to_wire_dict(revoke))
+    assert link.forwarded_calls == [("itlab-05", expected_command)]

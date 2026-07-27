@@ -1,10 +1,14 @@
 import pytest
 
 from pars_admin.broker.authz import BrokerAuthzError, GrantGatedBroker
-from pars_admin.broker.broker_server import process_broker_session_request
+from pars_admin.broker.broker_server import (
+    process_broker_grant_delivery,
+    process_broker_session_request,
+)
+from pars_admin.broker.grant_delivery import build_delivery_command
 from pars_shared import crypto, grant
 from pars_shared.grant import to_wire_dict
-from pars_shared.protocol import BrokerSessionRequestMessage
+from pars_shared.protocol import BrokerGrantDeliveryMessage, BrokerSessionRequestMessage
 
 
 class _FakeEpoptesLink:
@@ -68,4 +72,30 @@ def test_unknown_action_raises():
 
     with pytest.raises(ValueError):
         process_broker_session_request(gated, message)
+    assert link.forwarded_calls == []
+
+
+def test_grant_delivery_pushes_revoke_grant_to_target_hostname():
+    priv, pub = crypto.generate_keypair()
+    link = _FakeEpoptesLink()
+    gated = GrantGatedBroker(epoptes_link=link, admin_pubkey=pub)
+    g = _issue(priv, pub, grant_kind="revoke", target_hostname="itlab-05")
+    message = BrokerGrantDeliveryMessage(grant=to_wire_dict(g))
+
+    result = process_broker_grant_delivery(gated, message)
+
+    expected_command = build_delivery_command(to_wire_dict(g))
+    assert result == f"ran:{expected_command}"
+    assert link.forwarded_calls == [("itlab-05", expected_command)]
+
+
+def test_grant_delivery_rejects_open_grant():
+    priv, pub = crypto.generate_keypair()
+    link = _FakeEpoptesLink()
+    gated = GrantGatedBroker(epoptes_link=link, admin_pubkey=pub)
+    g = _issue(priv, pub, grant_kind="open", target_hostname="itlab-05")
+    message = BrokerGrantDeliveryMessage(grant=to_wire_dict(g))
+
+    with pytest.raises(BrokerAuthzError):
+        process_broker_grant_delivery(gated, message)
     assert link.forwarded_calls == []

@@ -97,6 +97,15 @@ def test_login_result_roundtrip():
     assert parsed == msg
 
 
+def test_broker_grant_delivery_roundtrip():
+    g = _sample_grant()
+    msg = protocol.BrokerGrantDeliveryMessage(grant=grant.to_wire_dict(g))
+    parsed = protocol.from_json(protocol.to_json(msg))
+    assert isinstance(parsed, protocol.BrokerGrantDeliveryMessage)
+    rebuilt = grant.from_wire_dict(parsed.grant)
+    assert rebuilt == g
+
+
 def test_broker_session_result_roundtrip():
     msg = protocol.BrokerSessionResultMessage(success=True, error="")
     parsed = protocol.from_json(protocol.to_json(msg))
