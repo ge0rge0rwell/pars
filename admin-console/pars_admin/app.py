@@ -1,5 +1,6 @@
 import os
 
+from pars_admin.accounts import AccountStore
 from pars_admin.audit import AuditLog
 from pars_admin.backup import create_backup as _create_backup
 from pars_admin.bulk_import import BulkImportStaging
@@ -9,6 +10,7 @@ from pars_admin.registry import Registry
 from pars_admin.session_tracker import SessionTracker
 from pars_admin.trust_root import ensure_admin_trust_root
 from pars_shared.constants import GRANT_KIND_OPEN
+from pars_shared.protocol import LoginResultMessage
 
 _TRUST_ROOT_FILENAMES = ("admin_instance_id", "trust_root.key", "trust_root.pub")
 
@@ -21,6 +23,7 @@ class AdminApp:
         audit_db_path: str,
         staging_db_path: str,
         health_db_path: str = None,
+        accounts_db_path: str = None,
     ):
         self._data_dir = data_dir
         self.trust_root = ensure_admin_trust_root(data_dir)
@@ -30,8 +33,19 @@ class AdminApp:
         self.health = HealthStore(
             health_db_path or os.path.join(data_dir, "health.sqlite3")
         )
+        self.accounts = AccountStore(
+            accounts_db_path or os.path.join(data_dir, "accounts.sqlite3")
+        )
         self.sessions = SessionTracker(self.trust_root, self.registry)
         self._registry_db_path = registry_db_path
+
+    def create_teacher_account(self, username: str, password: str) -> None:
+        self.accounts.create_account(username, password)
+
+    def handle_login(self, message) -> LoginResultMessage:
+        success = self.accounts.verify_login(message.username, message.password)
+        reason = "" if success else "invalid credentials"
+        return LoginResultMessage(success=success, reason=reason)
 
     def list_machines(self) -> list:
         return self.registry.list_all()
