@@ -318,3 +318,90 @@ def test_handle_connection_dispatches_machine_list_request(tmp_path):
     parsed = protocol.from_json(reply.decode("utf-8"))
     assert isinstance(parsed, protocol.MachineListResultMessage)
     assert parsed.hostnames == ["itlab-03"]
+
+
+def test_handle_connection_dispatches_session_request_success(tmp_path):
+    from pars_admin.app import AdminApp
+
+    app = AdminApp(
+        data_dir=str(tmp_path / "trust"),
+        registry_db_path=str(tmp_path / "registry.sqlite3"),
+        audit_db_path=str(tmp_path / "audit.sqlite3"),
+        staging_db_path=str(tmp_path / "staging.sqlite3"),
+    )
+    app.registry.upsert("itlab-03", "it_lab", "ab:cd", "approved")
+
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("127.0.0.1", 0))
+    server.listen(1)
+    port = server.getsockname()[1]
+
+    def accept_one():
+        conn, _addr = server.accept()
+        handle_connection(conn, app.registry, app.trust_root, app=app)
+        conn.close()
+        server.close()
+
+    thread = threading.Thread(target=accept_one, daemon=True)
+    thread.start()
+
+    request = protocol.SessionRequestMessage(
+        username="teacher.ayse",
+        hostname="itlab-03",
+        action="control",
+        session_mode="control",
+    )
+    with socket.create_connection(("127.0.0.1", port), timeout=2) as client:
+        client.sendall(protocol.to_json(request).encode("utf-8"))
+        client.shutdown(socket.SHUT_WR)
+        reply = client.recv(4096)
+    thread.join(timeout=2)
+
+    parsed = protocol.from_json(reply.decode("utf-8"))
+    assert isinstance(parsed, protocol.SessionRequestResultMessage)
+    assert parsed.error == ""
+    assert parsed.grant["target_hostname"] == "itlab-03"
+
+
+def test_handle_connection_dispatches_session_request_conflict(tmp_path):
+    from pars_admin.app import AdminApp
+
+    app = AdminApp(
+        data_dir=str(tmp_path / "trust"),
+        registry_db_path=str(tmp_path / "registry.sqlite3"),
+        audit_db_path=str(tmp_path / "audit.sqlite3"),
+        staging_db_path=str(tmp_path / "staging.sqlite3"),
+    )
+    app.registry.upsert("itlab-03", "it_lab", "ab:cd", "approved")
+    app.open_session("teacher.ayse", "teacher", "itlab-03", "control")
+
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("127.0.0.1", 0))
+    server.listen(1)
+    port = server.getsockname()[1]
+
+    def accept_one():
+        conn, _addr = server.accept()
+        handle_connection(conn, app.registry, app.trust_root, app=app)
+        conn.close()
+        server.close()
+
+    thread = threading.Thread(target=accept_one, daemon=True)
+    thread.start()
+
+    request = protocol.SessionRequestMessage(
+        username="teacher.mehmet",
+        hostname="itlab-03",
+        action="control",
+        session_mode="control",
+    )
+    with socket.create_connection(("127.0.0.1", port), timeout=2) as client:
+        client.sendall(protocol.to_json(request).encode("utf-8"))
+        client.shutdown(socket.SHUT_WR)
+        reply = client.recv(4096)
+    thread.join(timeout=2)
+
+    parsed = protocol.from_json(reply.decode("utf-8"))
+    assert isinstance(parsed, protocol.SessionRequestResultMessage)
+    assert parsed.error != ""
+    assert parsed.grant == {}
