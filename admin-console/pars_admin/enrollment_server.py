@@ -1,9 +1,12 @@
 import socket
 
+from pars_admin.grant_issue import GrantIssueError
 from pars_admin.registry import Registry
+from pars_admin.session_tracker import SessionConflictError
 from pars_admin.trust_root import AdminTrustRoot
 from pars_shared import protocol
-from pars_shared.constants import ROOM_TYPE_IT_LAB
+from pars_shared.constants import GRANT_KIND_OPEN, ROOM_TYPE_IT_LAB
+from pars_shared.grant import to_wire_dict
 
 
 def handle_registration(
@@ -55,6 +58,7 @@ def handle_connection(
     staging=None,
     health_store=None,
     accounts=None,
+    app=None,
 ) -> None:
     data = b""
     while True:
@@ -81,6 +85,27 @@ def handle_connection(
             and record.enrollment_status == "approved"
         ]
         response = protocol.MachineListResultMessage(hostnames=hostnames)
+        conn.sendall(protocol.to_json(response).encode("utf-8"))
+        return
+
+    if isinstance(message, protocol.SessionRequestMessage):
+        if app is None:
+            response = protocol.SessionRequestResultMessage(
+                grant={}, error="broker unavailable"
+            )
+        else:
+            try:
+                grants = app.open_session(
+                    message.username, "teacher", message.hostname, message.session_mode
+                )
+                open_grant = next(g for g in grants if g.grant_kind == GRANT_KIND_OPEN)
+                response = protocol.SessionRequestResultMessage(
+                    grant=to_wire_dict(open_grant), error=""
+                )
+            except (SessionConflictError, GrantIssueError) as exc:
+                response = protocol.SessionRequestResultMessage(
+                    grant={}, error=str(exc)
+                )
         conn.sendall(protocol.to_json(response).encode("utf-8"))
         return
 
