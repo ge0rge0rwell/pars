@@ -12,6 +12,8 @@ from pars_shared.constants import (
     MSG_TYPE_MACHINE_LIST_REQUEST,
     MSG_TYPE_MACHINE_LIST_RESULT,
     MSG_TYPE_REGISTER,
+    MSG_TYPE_SESSION_REQUEST,
+    MSG_TYPE_SESSION_REQUEST_RESULT,
 )
 
 
@@ -95,6 +97,22 @@ class MachineListResultMessage:
     msg_type: str = MSG_TYPE_MACHINE_LIST_RESULT
 
 
+@dataclass(frozen=True)
+class SessionRequestMessage:
+    username: str
+    hostname: str
+    action: str
+    session_mode: str
+    msg_type: str = MSG_TYPE_SESSION_REQUEST
+
+
+@dataclass(frozen=True)
+class SessionRequestResultMessage:
+    grant: dict
+    error: str = ""
+    msg_type: str = MSG_TYPE_SESSION_REQUEST_RESULT
+
+
 def to_json(message) -> str:
     return json.dumps(asdict(message))
 
@@ -110,6 +128,8 @@ _MESSAGE_TYPES_BY_TAG = {
     MSG_TYPE_LOGIN_RESULT: LoginResultMessage,
     MSG_TYPE_MACHINE_LIST_REQUEST: MachineListRequestMessage,
     MSG_TYPE_MACHINE_LIST_RESULT: MachineListResultMessage,
+    MSG_TYPE_SESSION_REQUEST: SessionRequestMessage,
+    MSG_TYPE_SESSION_REQUEST_RESULT: SessionRequestResultMessage,
 }
 
 
