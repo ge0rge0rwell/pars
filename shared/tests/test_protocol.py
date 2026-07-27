@@ -55,6 +55,25 @@ def test_machine_list_result_roundtrip():
     assert parsed == msg
 
 
+def test_session_request_roundtrip():
+    msg = protocol.SessionRequestMessage(
+        username="teacher.ayse",
+        hostname="itlab-03",
+        action="control",
+        session_mode="control",
+    )
+    parsed = protocol.from_json(protocol.to_json(msg))
+    assert parsed == msg
+    assert isinstance(parsed, protocol.SessionRequestMessage)
+
+
+def test_session_request_result_roundtrip():
+    g = _sample_grant()
+    msg = protocol.SessionRequestResultMessage(grant=grant.to_wire_dict(g), error="")
+    parsed = protocol.from_json(protocol.to_json(msg))
+    assert parsed == msg
+
+
 def test_from_json_rejects_unknown_type():
     with pytest.raises(ValueError):
         protocol.from_json('{"msg_type": "nonsense"}')
