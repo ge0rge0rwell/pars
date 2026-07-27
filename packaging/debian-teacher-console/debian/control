@@ -1,0 +1,21 @@
+Source: pars-teacher-console
+Section: education
+Priority: optional
+Maintainer: Pars Team <pars@localhost>
+Build-Depends: debhelper-compat (= 13), dh-python, python3-all
+Standards-Version: 4.6.2
+Homepage: https://example.invalid/pars
+
+Package: pars-teacher-console
+Architecture: all
+Depends: ${python3:Depends},
+         ${misc:Depends},
+         python3-gi,
+         gir1.2-gtk-3.0,
+         stunnel4
+Description: Pars Teacher Console
+ Per-teacher login, it_lab-scoped machine list, and session
+ request/grant flow for Pardus classroom labs. Talks to the Admin
+ Console and the session broker only over stunnel-wrapped
+ connections — never opens epoptesd's socket directly (see
+ TASKS.md's B7/D3 findings).
