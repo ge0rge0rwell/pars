@@ -1,0 +1,7 @@
+[flake8]
+max-line-length = 100
+extend-ignore = E203
+exclude = .venv,.pytest_cache
+per-file-ignores =
+    admin-console/pars_admin/ui/main_window.py:E402
+    agent/pars_agent/indicator_gtk.py:E402
