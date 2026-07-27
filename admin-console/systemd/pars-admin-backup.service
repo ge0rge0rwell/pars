@@ -1,0 +1,8 @@
+[Unit]
+Description=Pars admin console scheduled backup
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -m pars_admin.backup_cli --data-dir /var/lib/pars-admin --output-dir /var/backups/pars-admin
+User=pars-admin
+Group=pars-admin
