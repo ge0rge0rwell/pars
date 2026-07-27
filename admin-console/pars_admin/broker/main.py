@@ -90,18 +90,21 @@ def run_broker(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Pars broker")
-    parser.add_argument("--admin-pubkey", required=True)
+    pubkey_group = parser.add_mutually_exclusive_group(required=True)
+    pubkey_group.add_argument("--admin-pubkey")
+    pubkey_group.add_argument("--admin-pubkey-file")
     parser.add_argument("--listen-host", default=_DEFAULT_BROKER_LISTEN_HOST)
     parser.add_argument("--listen-port", type=int, default=_DEFAULT_BROKER_LISTEN_PORT)
     parser.add_argument("--epoptesd-socket", default=_DEFAULT_EPOPTESD_SOCKET)
     args = parser.parse_args()
 
-    run_broker(
-        bytes.fromhex(args.admin_pubkey),
-        args.listen_host,
-        args.listen_port,
-        args.epoptesd_socket,
-    )
+    if args.admin_pubkey_file:
+        with open(args.admin_pubkey_file, "rb") as f:
+            admin_pubkey = f.read()
+    else:
+        admin_pubkey = bytes.fromhex(args.admin_pubkey)
+
+    run_broker(admin_pubkey, args.listen_host, args.listen_port, args.epoptesd_socket)
 
 
 if __name__ == "__main__":
