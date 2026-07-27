@@ -127,3 +127,14 @@ def test_handle_login_unknown_account_fails(tmp_path):
     )
 
     assert result.success is False
+
+
+def test_list_it_lab_machines_excludes_other_room_types(tmp_path):
+    app = _app(tmp_path)
+    app.registry.upsert("itlab-03", "it_lab", "ab:cd", "approved")
+    app.registry.upsert("office-01", "office", "11:22", "approved")
+    app.registry.upsert("itlab-04", "it_lab", "33:44", "pending")
+
+    hostnames = app.list_it_lab_machines()
+
+    assert hostnames == ["itlab-03"]
