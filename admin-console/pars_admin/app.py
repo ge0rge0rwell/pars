@@ -9,7 +9,7 @@ from pars_admin.health_store import HealthStore
 from pars_admin.registry import Registry
 from pars_admin.session_tracker import SessionTracker
 from pars_admin.trust_root import ensure_admin_trust_root
-from pars_shared.constants import GRANT_KIND_OPEN
+from pars_shared.constants import GRANT_KIND_OPEN, ROOM_TYPE_IT_LAB
 from pars_shared.protocol import LoginResultMessage
 
 _TRUST_ROOT_FILENAMES = ("admin_instance_id", "trust_root.key", "trust_root.pub")
@@ -49,6 +49,14 @@ class AdminApp:
 
     def list_machines(self) -> list:
         return self.registry.list_all()
+
+    def list_it_lab_machines(self) -> list:
+        return [
+            record.hostname
+            for record in self.registry.list_all()
+            if record.room_type == ROOM_TYPE_IT_LAB
+            and record.enrollment_status == "approved"
+        ]
 
     def get_health(self, hostname: str):
         return self.health.get(hostname)
