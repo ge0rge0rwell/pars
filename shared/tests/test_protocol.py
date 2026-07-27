@@ -42,6 +42,19 @@ def test_enrollment_result_roundtrip():
     assert parsed == msg
 
 
+def test_machine_list_request_roundtrip():
+    msg = protocol.MachineListRequestMessage(username="teacher.ayse")
+    parsed = protocol.from_json(protocol.to_json(msg))
+    assert parsed == msg
+    assert isinstance(parsed, protocol.MachineListRequestMessage)
+
+
+def test_machine_list_result_roundtrip():
+    msg = protocol.MachineListResultMessage(hostnames=["itlab-03", "itlab-04"])
+    parsed = protocol.from_json(protocol.to_json(msg))
+    assert parsed == msg
+
+
 def test_from_json_rejects_unknown_type():
     with pytest.raises(ValueError):
         protocol.from_json('{"msg_type": "nonsense"}')
