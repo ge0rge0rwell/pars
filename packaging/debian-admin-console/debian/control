@@ -1,0 +1,26 @@
+Source: pars-admin-console
+Section: admin
+Priority: optional
+Maintainer: Pars Team <pars@localhost>
+Build-Depends: debhelper-compat (= 13), dh-python, python3-all
+Standards-Version: 4.6.2
+Homepage: https://example.invalid/pars
+
+Package: pars-admin-console
+Architecture: all
+Depends: ${python3:Depends},
+         ${misc:Depends},
+         python3-gi,
+         gir1.2-gtk-3.0,
+         python3-cryptography,
+         python3-zeroconf,
+         python3-twisted,
+         python3-reportlab,
+         epoptes,
+         epoptes-client,
+         stunnel4
+Description: Pars School Admin Console
+ Fleet oversight for Pardus classroom labs: enrollment, signed
+ session grants, conflict detection, audit logging, bulk import and
+ backup. Orchestrates Epoptes via a grant-gated broker rather than
+ reimplementing screen control (see TASKS.md's B7 findings).
