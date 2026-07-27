@@ -286,3 +286,35 @@ def test_handle_connection_dispatches_login_request_wrong_password(tmp_path):
     parsed = protocol.from_json(reply.decode("utf-8"))
     assert isinstance(parsed, protocol.LoginResultMessage)
     assert parsed.success is False
+
+
+def test_handle_connection_dispatches_machine_list_request(tmp_path):
+    registry = Registry(str(tmp_path / "registry.sqlite3"))
+    trust_root = ensure_admin_trust_root(str(tmp_path))
+    registry.upsert("itlab-03", "it_lab", "ab:cd", "approved")
+    registry.upsert("office-01", "office", "11:22", "approved")
+
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("127.0.0.1", 0))
+    server.listen(1)
+    port = server.getsockname()[1]
+
+    def accept_one():
+        conn, _addr = server.accept()
+        handle_connection(conn, registry, trust_root)
+        conn.close()
+        server.close()
+
+    thread = threading.Thread(target=accept_one, daemon=True)
+    thread.start()
+
+    request = protocol.MachineListRequestMessage(username="teacher.ayse")
+    with socket.create_connection(("127.0.0.1", port), timeout=2) as client:
+        client.sendall(protocol.to_json(request).encode("utf-8"))
+        client.shutdown(socket.SHUT_WR)
+        reply = client.recv(4096)
+    thread.join(timeout=2)
+
+    parsed = protocol.from_json(reply.decode("utf-8"))
+    assert isinstance(parsed, protocol.MachineListResultMessage)
+    assert parsed.hostnames == ["itlab-03"]
