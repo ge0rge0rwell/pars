@@ -1,0 +1,15 @@
+[Unit]
+Description=Pars classroom agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 -m pars_agent.main --answer-file /etc/pars/agent.conf --data-dir /var/lib/pars-agent
+Restart=on-failure
+RestartSec=10
+User=pars-agent
+Group=pars-agent
+
+[Install]
+WantedBy=multi-user.target
