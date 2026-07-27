@@ -14,17 +14,26 @@ from pars_agent.health import collect_health
 from pars_agent.health_report import send_health_report
 from pars_agent.recorder import ScreenshotRecorder
 from pars_agent.register import send_register_message
+from pars_agent.video_recorder import SessionVideoRecorder
 from pars_shared.protocol import EnrollmentResultMessage
 
 _TICK_INTERVAL_SECONDS = 30
 
 
 class AgentLoop:
-    def __init__(self, verifier: GrantVerifier, indicator, recorder, inbox_dir):
+    def __init__(
+        self,
+        verifier: GrantVerifier,
+        indicator,
+        recorder,
+        inbox_dir,
+        video_recorder=None,
+    ):
         self._verifier = verifier
         self._indicator = indicator
         self._recorder = recorder
         self._inbox_dir = inbox_dir
+        self._video_recorder = video_recorder
         self._last_subject = None
 
     def tick(self) -> None:
@@ -36,8 +45,12 @@ class AgentLoop:
 
         if subject is not None and self._last_subject is None:
             self._recorder.capture("start")
+            if self._video_recorder is not None:
+                self._video_recorder.start("session")
         elif subject is None and self._last_subject is not None:
             self._recorder.capture("end")
+            if self._video_recorder is not None:
+                self._video_recorder.stop()
         elif subject is not None:
             self._recorder.capture("interval")
 
@@ -78,11 +91,14 @@ def bootstrap(answer_file: str, data_dir: str) -> AgentLoop:
 
     verifier = GrantVerifier(pinned_admin_pubkey=admin_pubkey, own_hostname=hostname)
     recorder = ScreenshotRecorder(storage_dir=Path(data_dir) / "screenshots")
+    video_recorder = SessionVideoRecorder(storage_dir=Path(data_dir) / "videos")
     indicator = _build_indicator()
     inbox_dir = Path(data_dir) / "inbox"
     inbox_dir.mkdir(parents=True, exist_ok=True)
 
-    loop = AgentLoop(verifier, indicator, recorder, inbox_dir)
+    loop = AgentLoop(
+        verifier, indicator, recorder, inbox_dir, video_recorder=video_recorder
+    )
 
     def health_reporter():
         send_health_report(config, hostname=hostname, report=collect_health())
