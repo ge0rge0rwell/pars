@@ -3,6 +3,7 @@ from dataclasses import asdict, dataclass
 
 from pars_shared.constants import (
     MSG_TYPE_BROKER_SESSION_REQUEST,
+    MSG_TYPE_BROKER_SESSION_RESULT,
     MSG_TYPE_CONFLICT_REJECTION,
     MSG_TYPE_ENROLLMENT_RESULT,
     MSG_TYPE_HEALTH_REPORT,
@@ -71,6 +72,13 @@ class BrokerSessionRequestMessage:
 
 
 @dataclass(frozen=True)
+class BrokerSessionResultMessage:
+    success: bool
+    error: str = ""
+    msg_type: str = MSG_TYPE_BROKER_SESSION_RESULT
+
+
+@dataclass(frozen=True)
 class LoginRequestMessage:
 
     username: str
@@ -124,6 +132,7 @@ _MESSAGE_TYPES_BY_TAG = {
     MSG_TYPE_CONFLICT_REJECTION: ConflictRejectionMessage,
     MSG_TYPE_HEALTH_REPORT: HealthReportMessage,
     MSG_TYPE_BROKER_SESSION_REQUEST: BrokerSessionRequestMessage,
+    MSG_TYPE_BROKER_SESSION_RESULT: BrokerSessionResultMessage,
     MSG_TYPE_LOGIN_REQUEST: LoginRequestMessage,
     MSG_TYPE_LOGIN_RESULT: LoginResultMessage,
     MSG_TYPE_MACHINE_LIST_REQUEST: MachineListRequestMessage,
