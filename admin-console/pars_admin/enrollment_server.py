@@ -3,6 +3,7 @@ import socket
 from pars_admin.registry import Registry
 from pars_admin.trust_root import AdminTrustRoot
 from pars_shared import protocol
+from pars_shared.constants import ROOM_TYPE_IT_LAB
 
 
 def handle_registration(
@@ -70,6 +71,17 @@ def handle_connection(
     if isinstance(message, protocol.HealthReportMessage):
         if health_store is not None:
             health_store.apply_report(message)
+        return
+
+    if isinstance(message, protocol.MachineListRequestMessage):
+        hostnames = [
+            record.hostname
+            for record in registry.list_all()
+            if record.room_type == ROOM_TYPE_IT_LAB
+            and record.enrollment_status == "approved"
+        ]
+        response = protocol.MachineListResultMessage(hostnames=hostnames)
+        conn.sendall(protocol.to_json(response).encode("utf-8"))
         return
 
     if isinstance(message, protocol.LoginRequestMessage):
