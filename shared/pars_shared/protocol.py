@@ -9,6 +9,8 @@ from pars_shared.constants import (
     MSG_TYPE_HEARTBEAT,
     MSG_TYPE_LOGIN_REQUEST,
     MSG_TYPE_LOGIN_RESULT,
+    MSG_TYPE_MACHINE_LIST_REQUEST,
+    MSG_TYPE_MACHINE_LIST_RESULT,
     MSG_TYPE_REGISTER,
 )
 
@@ -81,6 +83,18 @@ class LoginResultMessage:
     msg_type: str = MSG_TYPE_LOGIN_RESULT
 
 
+@dataclass(frozen=True)
+class MachineListRequestMessage:
+    username: str
+    msg_type: str = MSG_TYPE_MACHINE_LIST_REQUEST
+
+
+@dataclass(frozen=True)
+class MachineListResultMessage:
+    hostnames: list
+    msg_type: str = MSG_TYPE_MACHINE_LIST_RESULT
+
+
 def to_json(message) -> str:
     return json.dumps(asdict(message))
 
@@ -94,6 +108,8 @@ _MESSAGE_TYPES_BY_TAG = {
     MSG_TYPE_BROKER_SESSION_REQUEST: BrokerSessionRequestMessage,
     MSG_TYPE_LOGIN_REQUEST: LoginRequestMessage,
     MSG_TYPE_LOGIN_RESULT: LoginResultMessage,
+    MSG_TYPE_MACHINE_LIST_REQUEST: MachineListRequestMessage,
+    MSG_TYPE_MACHINE_LIST_RESULT: MachineListResultMessage,
 }
 
 
