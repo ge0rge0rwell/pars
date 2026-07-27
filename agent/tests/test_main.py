@@ -23,6 +23,17 @@ class _FakeRecorder:
         self.labels.append(label)
 
 
+class _FakeVideoRecorder:
+    def __init__(self):
+        self.events = []
+
+    def start(self, label):
+        self.events.append(("start", label))
+
+    def stop(self):
+        self.events.append(("stop", None))
+
+
 def _drop_grant(inbox_dir, priv, pub, grant_id, grant_kind="open"):
     g = grant.build_and_sign(
         grant_id=grant_id,
@@ -112,3 +123,42 @@ def test_run_forever_calls_health_reporter_every_nth_tick():
         )
 
     assert health_calls == [1, 1]
+
+
+def test_open_grant_starts_video_recording(tmp_path):
+    priv, pub = crypto.generate_keypair()
+    verifier = GrantVerifier(pinned_admin_pubkey=pub, own_hostname="itlab-03")
+    indicator, recorder = _FakeIndicator(), _FakeRecorder()
+    video_recorder = _FakeVideoRecorder()
+    loop = AgentLoop(
+        verifier, indicator, recorder, inbox_dir=tmp_path, video_recorder=video_recorder
+    )
+    _drop_grant(tmp_path, priv, pub, "g-1")
+
+    loop.tick()
+
+    assert video_recorder.events == [("start", "session")]
+
+
+def test_revoke_grant_stops_video_recording(tmp_path):
+    priv, pub = crypto.generate_keypair()
+    verifier = GrantVerifier(pinned_admin_pubkey=pub, own_hostname="itlab-03")
+    indicator, recorder = _FakeIndicator(), _FakeRecorder()
+    video_recorder = _FakeVideoRecorder()
+    loop = AgentLoop(
+        verifier, indicator, recorder, inbox_dir=tmp_path, video_recorder=video_recorder
+    )
+    _drop_grant(tmp_path, priv, pub, "g-1")
+    loop.tick()
+
+    _drop_grant(tmp_path, priv, pub, "g-2", grant_kind="revoke")
+    loop.tick()
+
+    assert video_recorder.events == [("start", "session"), ("stop", None)]
+
+
+def test_no_video_recorder_does_not_break_tick():
+    verifier = GrantVerifier(pinned_admin_pubkey=b"\x01" * 32, own_hostname="itlab-03")
+    loop = AgentLoop(verifier, _FakeIndicator(), _FakeRecorder(), inbox_dir=None)
+
+    loop.tick()
