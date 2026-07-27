@@ -1,0 +1,11 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: pars-admin-console
+Source: https://example.invalid/pars
+
+Files: *
+Copyright: 2026 Pars Team
+License: GPL-2
+
+License: GPL-2
+ See /usr/share/common-licenses/GPL-2 on Debian systems, or LICENSE in
+ the Pars source tree.
