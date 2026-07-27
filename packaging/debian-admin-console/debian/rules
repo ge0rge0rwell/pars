@@ -1,0 +1,20 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+# No setup.py in this repo (a plain module tree, not a pip package) --
+# stage the two source trees debian/install expects under staging/
+# before dh_install runs, rather than pulling in pybuild for this.
+override_dh_auto_build:
+	mkdir -p staging
+	cp -r ../admin-console/pars_admin staging/
+	cp -r ../shared/pars_shared staging/
+	cp ../admin-console/systemd/pars-admin-backup.service staging/
+	cp ../admin-console/systemd/pars-admin-backup.timer staging/
+
+override_dh_auto_clean:
+	rm -rf staging
+
+override_dh_installsystemd:
+	dh_installsystemd --no-enable --no-start
