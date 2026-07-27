@@ -87,3 +87,43 @@ def test_get_health_reflects_applied_report(tmp_path):
 
     record = app.get_health("itlab-03")
     assert record.disk_free_percent == 42.5
+
+
+def test_create_teacher_account_then_handle_login_succeeds(tmp_path):
+    from pars_shared.protocol import LoginRequestMessage
+
+    app = _app(tmp_path)
+    app.create_teacher_account("teacher.ayse", "correct horse battery staple")
+
+    result = app.handle_login(
+        LoginRequestMessage(
+            username="teacher.ayse", password="correct horse battery staple"
+        )
+    )
+
+    assert result.success is True
+
+
+def test_handle_login_wrong_password_fails(tmp_path):
+    from pars_shared.protocol import LoginRequestMessage
+
+    app = _app(tmp_path)
+    app.create_teacher_account("teacher.ayse", "correct horse battery staple")
+
+    result = app.handle_login(
+        LoginRequestMessage(username="teacher.ayse", password="wrong")
+    )
+
+    assert result.success is False
+
+
+def test_handle_login_unknown_account_fails(tmp_path):
+    from pars_shared.protocol import LoginRequestMessage
+
+    app = _app(tmp_path)
+
+    result = app.handle_login(
+        LoginRequestMessage(username="ghost", password="anything")
+    )
+
+    assert result.success is False
