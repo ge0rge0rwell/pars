@@ -97,6 +97,13 @@ def test_login_result_roundtrip():
     assert parsed == msg
 
 
+def test_broker_session_result_roundtrip():
+    msg = protocol.BrokerSessionResultMessage(success=True, error="")
+    parsed = protocol.from_json(protocol.to_json(msg))
+    assert parsed == msg
+    assert isinstance(parsed, protocol.BrokerSessionResultMessage)
+
+
 def test_broker_session_request_roundtrip():
     g = _sample_grant()
     msg = protocol.BrokerSessionRequestMessage(
